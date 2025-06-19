@@ -196,7 +196,7 @@ void memory_read(void *pc, void *next_pc)
   instr_init(drcontext, instr);
   if (!decode(drcontext, pc, instr))
     {
-      dr_printf("Decode of instruction at %p failed\n", pc);
+      dr_printf("3 Decode of instruction at %p failed\n", pc);
       return;
     }
 
@@ -229,7 +229,7 @@ void memory_write(void *pc, void *prev_pc)
   instr_init(drcontext, instr);
   if (!decode(drcontext, pc, instr))
     {
-      dr_printf("Decode of instruction at %p failed\n", pc);
+      dr_printf("4 Decode of instruction at %p failed\n", pc);
       return;
     }
 

@@ -19,7 +19,7 @@ void *get_real_func_addr(void *pc, void *got)
   instr_init(drcontext, instr);
   if (!decode(drcontext, pc, instr))
     {
-      dr_printf("Decode of instruction at %p failed\n", pc);
+      dr_printf("0 Decode of instruction at %p failed\n", pc);
       return NULL;
     }
 
@@ -31,7 +31,7 @@ void *get_real_func_addr(void *pc, void *got)
       pc = decode_next_pc(drcontext, pc);
       if (!decode(drcontext, pc, instr))
 	{
-	  dr_printf("Decode of instruction at %p failed\n", pc);
+	  dr_printf("1 Decode of instruction at %p failed\n", pc);
 	  return NULL;
 	}
     }
