@@ -1,4 +1,4 @@
-% include header
+% include("header")
 
 <div class="container-fluid">
 
@@ -20,4 +20,4 @@
   </form>
   
 </div>
-% include footer 
+% include("footer") 

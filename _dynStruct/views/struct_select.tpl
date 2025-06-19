@@ -1,4 +1,4 @@
-% include header
+% include("header")
 <script type="text/javascript" src="/static/js/jquery-1.12.0.min.js"></script>
 <script type="text/javascript" src="/static/js/jquery.dataTables.min.js"></script>
 <script type="text/javascript" src="/static/js/dataTables.bootstrap.min.js"></script>
@@ -42,4 +42,4 @@
     </tfoot>
   </table>
 </div>
-% include footer
+% include("footer")

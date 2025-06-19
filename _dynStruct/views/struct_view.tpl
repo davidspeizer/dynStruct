@@ -1,4 +1,4 @@
-% include header
+% include("header")
 
 <div class="container-fluid">
   <h1 class="text-center"> {{struct.name}} informations</h1>
@@ -20,4 +20,4 @@
 % include('block_search.tpl', in_page=True, in_struct_view=True, id_struct=struct.id)
 </div>
 
-% include footer
+% include("footer")

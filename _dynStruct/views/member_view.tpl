@@ -1,4 +1,4 @@
-% include header
+% include("header")
 <div class="container-fluid">
   <h1 class="text-center"> {{! name_member}} informations</h1>
 % if not edit:
@@ -143,4 +143,4 @@
 
 </div>
 
-% include footer
+% include("footer")

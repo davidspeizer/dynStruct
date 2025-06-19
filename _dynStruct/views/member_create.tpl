@@ -1,4 +1,4 @@
-% include header
+% include("header")
 <script type="text/javascript">
   $(document).ready(function(){
       $("#select-tab a").click(function(e){
@@ -127,4 +127,4 @@
 
 </div>
 
-% include footer
+% include("footer")

@@ -1,4 +1,4 @@
-% include header
+% include("header")
 <script type="text/javascript" src="/static/js/jquery.dataTables.min.js"></script>
 <script type="text/javascript" src="/static/js/dataTables.bootstrap.min.js"></script>
 <link rel="stylesheet" href="/static/css/dataTables.bootstrap.min.css"/>
@@ -74,4 +74,4 @@
 % if not defined('in_page'):
 </div>
 % end
-% include footer
+% include("footer")
