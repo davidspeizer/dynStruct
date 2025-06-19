@@ -96,8 +96,7 @@ class Access:
             # Detect if the written val is the result from a floating point register
             if self.instr.mnemonic.startswith('mov'):
                 src_op = self.instr.operands[1]
-                if src_op.type == capstone.x86.X86_OP_FP or\
-                   (src_op.type == capstone.x86.X86_OP_REG and src_op.reg in xmm_regs):
+                if(src_op.type == capstone.x86.X86_OP_REG and src_op.reg in xmm_regs):
                     if size == 4:
                         return _dynStruct.float_str
                     elif size == 8:

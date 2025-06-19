@@ -18,7 +18,7 @@ typedef struct module_s
 } module_t;
 
 // store the index of the tls slot who contain stack data
-int	tls_stack_idx;
+extern int	tls_stack_idx;
 
 void dir_call_monitor(void *pc);
 void ind_call_monitor(app_pc caller, app_pc calle);

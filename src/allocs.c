@@ -36,7 +36,7 @@ void *get_prev_instr_pc(void *pc, void *drc)
   return tmp_pc;
 }
 
-void pre_calloc(void *wrapctx, OUT void **user_data)
+void pre_calloc(void *wrapctx, void **user_data)
 {
   void		*drc;
   
@@ -70,9 +70,10 @@ void post_calloc(void *wrapctx, void *user_data)
   dr_mutex_unlock(lock);
 }
 
-void pre_malloc(void *wrapctx, OUT void **user_data)
+void pre_malloc(void *wrapctx, void **user_data)
 {
   void		*drc;
+  dr_printf("Malloc called\n");
 
   drc = drwrap_get_drcontext(wrapctx);
   dr_mutex_lock(lock);
@@ -124,7 +125,7 @@ void post_malloc(void *wrapctx, void *user_data)
   dr_mutex_unlock(lock);
 }
 
-void pre_realloc(void *wrapctx, OUT void **user_data)
+void pre_realloc(void *wrapctx, void **user_data)
 {
   malloc_t      *block;
   malloc_t	*new_block;
@@ -279,7 +280,7 @@ void post_realloc(void *wrapctx, void *user_data)
     }
 }
 
-void pre_free(void *wrapctx, __attribute__((unused))OUT void **user_data)
+void pre_free(void *wrapctx, void **user_data)
 {
   malloc_t	*block;
   void		*drc;
