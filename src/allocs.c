@@ -280,7 +280,7 @@ void post_realloc(void *wrapctx, void *user_data)
     }
 }
 
-void pre_free(void *wrapctx, void **user_data)
+void pre_free(void *wrapctx, __attribute__((unused))void **user_data)
 {
   malloc_t	*block;
   void		*drc;

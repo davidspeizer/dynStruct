@@ -317,9 +317,11 @@ int parse_arg(int argc, char **argv)
 	    return false;
 	  ct++;
 	  break;
+	case 'h':
+	  print_usage();
+	  return false;
 	default:
 	  dr_printf("Bad arg %s\n", argv[ct]);
-	case 'h':
 	  print_usage();
 	  return false;
 	}

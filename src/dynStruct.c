@@ -18,6 +18,7 @@
 
 malloc_t  *old_blocks = NULL;
 tree_t	  *active_blocks = NULL;
+int tls_stack_idx = -1;
 void      *lock;
 
 static void thread_exit_event(void *drcontext)
@@ -116,6 +117,7 @@ static void load_event(void *drcontext,
 		       const module_data_t *mod,
 		       __attribute__((unused))bool loaded)
 {
+  dr_printf("Loading module %s\n", dr_module_preferred_name(mod));
   app_pc		malloc = (app_pc)dr_get_proc_address(mod->handle,
 							     "malloc");
   app_pc		calloc = (app_pc)dr_get_proc_address(mod->handle,
@@ -140,15 +142,21 @@ static void load_event(void *drcontext,
   			     sizeof(drsym_info_t), &tmp_data,
 			     DRSYM_DEMANGLE_FULL);
 
+  // `start` here is the memory address of the beginning of the loaded program.
+  // We'll want to save that to get memory offsets of malloc calls.
+  dr_printf("Found data. start=%#p, got=%#p, malloc=%#p\n", tmp_data.start, tmp_data.got, malloc);
+
   add_plt(mod, tmp_data.got, drcontext);
   dr_mutex_unlock(lock);
   
   // free all data relative to symbols (like debug info) after loading symbol
   drsym_free_resources(mod->full_path);
 
+  // Check if we've loaded libc and therefore want to hook
   if (!module_is_alloc(mod))
     return;
 
+  // This registers hooks at the start and end of the malloc calls and at the start of the free call.
   if (malloc)
     DR_ASSERT(drwrap_wrap(malloc, pre_malloc, post_malloc));
 
