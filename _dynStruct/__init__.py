@@ -27,7 +27,7 @@ l_block = []
 l_access_w = []
 l_access_r = []
 serialized_file = ""
-disasm = None
+#disasm = None
 
 ptr_func_str = 'void(*%s)()'
 ptr_struct_str = 'void * // pointer to structure'

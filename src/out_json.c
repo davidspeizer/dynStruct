@@ -78,6 +78,7 @@ void print_access_json(access_t *access)
 
 void print_block_json(malloc_t *block)
 {
+  // Where does `start` get populated?
   DS_PRINTF("{\"start\":%lu, \"end\":%lu, \"size\":%lu, ",
 	     block->start, block->end, block->size);
 

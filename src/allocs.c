@@ -70,6 +70,7 @@ void post_calloc(void *wrapctx, void *user_data)
   dr_mutex_unlock(lock);
 }
 
+// Main function: this is called every time we see a malloc
 void pre_malloc(void *wrapctx, void **user_data)
 {
   void		*drc;
@@ -101,6 +102,12 @@ void pre_malloc(void *wrapctx, void **user_data)
       return;
     }
   
+  // This allocates a block for user_data and populates it with size, address, and alloc information.
+  // We define add_block this way:
+  //  malloc_t *add_block(size_t size, void *pc, void *drcontext)
+  //    size = drwrap_get_arg(wrapctx, 0)   <- gets the first argument to malloc, which is the size
+  //    pc = get_prev_instr_pc(drwrap_get_ret_addr(wrapctx), drc) <- gets the address of the call
+  //    drcontext = drc
   *user_data = add_block((size_t)drwrap_get_arg(wrapctx, 0),
 			 get_prev_instr_pc(drwrap_get_retaddr(wrapctx), drc),
 			 drc);
@@ -108,8 +115,10 @@ void pre_malloc(void *wrapctx, void **user_data)
   dr_mutex_unlock(lock);
 }
 
+// Called after the malloc completes
 void post_malloc(void *wrapctx, void *user_data)
 {
+  // Get the saved user data.
   malloc_t      *block = (malloc_t *)user_data;
 
   dr_mutex_lock(lock);
@@ -120,6 +129,13 @@ void post_malloc(void *wrapctx, void *user_data)
       return;
     }
 
+  // This is where the block is added to the block tree.
+  // We define set_addr_malloc this way:
+  //  void set_addr_malloc(malloc_t *block, void *start, unsigned int flag, int realloc)
+  //      block = block <- The block allocated when malloc was called
+  //      start = drwrap_get_retval(wrapctx) <- The address allocated by malloc (which is what malloc returns)
+  //      flag = ALLOC
+  //      realloc = false
   set_addr_malloc(block, drwrap_get_retval(wrapctx), ALLOC, 0);
 
   dr_mutex_unlock(lock);
@@ -291,6 +307,7 @@ void pre_free(void *wrapctx, __attribute__((unused))void **user_data)
     return;
 
   drc = drwrap_get_drcontext(wrapctx);
+
 
   dr_mutex_lock(lock);
 

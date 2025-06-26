@@ -76,8 +76,8 @@ class Struct:
     def recover(self, block):
         actual_offset = 0
 
-        if not _dynStruct.disasm:
-            _dynStruct.create_disasm()
+     #   if not _dynStruct.disasm:
+     #       _dynStruct.create_disasm()
 
         while actual_offset < self.size:
             accesses = block.get_access_by_offset(actual_offset)
@@ -553,11 +553,13 @@ class Struct:
                 if struct.struct_is_equal(tmp_struct):
                     struct.merge(tmp_struct)
                     struct.add_block(block)
-                    break;
+                    break
 
             if block.struct == tmp_struct:
                 structs.append(tmp_struct)
 
+            print("Found struct. Current number of structs is", len(structs))
+            print("Struct has", len(structs[-1].members), "members")
             if len(structs) == 0:
                 continue
 
@@ -572,6 +574,7 @@ class Struct:
 
     @staticmethod
     def clean_all_struct(structs, cleaning):
+        print("Cleaning structs. Currently have", len(structs), "structs")
         list_structs = list(structs)
         for struct in list_structs:
             if cleaning and struct.not_a_struct():

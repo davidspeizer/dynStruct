@@ -1,12 +1,13 @@
 import binascii
 import _dynStruct
-import capstone
+from ghidra.program.model.lang import Register
+#import capstone
 
-unsigned_int_instr = [capstone.x86.X86_INS_ADCX, capstone.x86.X86_INS_ADOX,
-                      capstone.x86.X86_INS_DIV, capstone.x86.X86_INS_MUL,
-                      capstone.x86.X86_INS_MULX]
+#unsigned_int_instr = [capstone.x86.X86_INS_ADCX, capstone.x86.X86_INS_ADOX,
+#                      capstone.x86.X86_INS_DIV, capstone.x86.X86_INS_MUL,
+#                      capstone.x86.X86_INS_MULX]
 
-xmm_regs = [xmm for xmm in range(capstone.x86.X86_REG_XMM0 - 1, capstone.x86.X86_REG_XMM31)]
+#xmm_regs = [xmm for xmm in range(capstone.x86.X86_REG_XMM0 - 1, capstone.x86.X86_REG_XMM31)]
 
 class Access:
 
@@ -73,17 +74,14 @@ class Access:
         return False
 
     def disass(self):
-        if not _dynStruct.disasm:
-            _dynStruct.create_disasm()
+        print("Calling disass with pc=0x{:x}, ctx_addr=0x{:x}".format(self.pc, self.ctx_addr))
+    #    if not _dynStruct.disasm:
+    #        _dynStruct.create_disasm()
 
         if not hasattr(self, 'instr'):
-            self.instr = [instr for instr in
-                          _dynStruct.disasm.disasm(binascii.unhexlify(self.instr_op),
-                                                   self.pc)][0]
+            self.instr = getInstructionAt(toAddr(self.pc))
             if self.ctx_opcode:
-                self.ctx_instr = [instr for instr in
-                                  _dynStruct.disasm.disasm(binascii.unhexlify(self.ctx_opcode),
-                                                           self.ctx_addr)][0]
+                self.ctx_instr = getInstructionAt(toAddr(self.ctx_addr))
 
     def analyse_ctx(self, size):
         #TODO extend analyse to other instruction and
@@ -94,33 +92,43 @@ class Access:
 
         if self.t == 'write':
             # Detect if the written val is the result from a floating point register
-            if self.instr.mnemonic.startswith('mov'):
-                src_op = self.instr.operands[1]
-                if(src_op.type == capstone.x86.X86_OP_REG and src_op.reg in xmm_regs):
+            if self.instr.getMnemonicString().startswith("MOV"):
+                src_op = self.instr.getRegister(1)
+                if src_op is not None and src_op.getName().startswith("xmm"):
                     if size == 4:
                         return _dynStruct.float_str
                     elif size == 8:
                         return _dynStruct.double_str
                     else:
                         return None
-                elif self.ctx_opcode and self.ctx_instr.mnemonic.startswith('mov'):
-                    dest_ctx_reg = self.ctx_instr.operands[0].reg
-                    src_ctx_op = self.ctx_instr.operands[1]
-                    if self.instr.operands[1].reg == dest_ctx_reg and\
-                       src_ctx_op.type == capstone.x86.X86_OP_REG and src_ctx_op.reg in xmm_regs:
+                elif self.ctx_opcode and self.ctx_instr.getMnemonicString().startswith("MOV"):
+                    # Check if the context was a MOV instruction that is being read by our current instruction.
+                    dest_ctx_reg = self.ctx_instr.getRegister(0)
+                    src_ctx_op = self.ctx_instr.getRegister(1)
+                    if dest_ctx_reg is not None and self.instr.getRegister(1) == dest_ctx_reg and src_ctx_op.getName().startswith("xmm"):
                         if size == 4:
                             return _dynStruct.float_str
                         elif size == 8:
                             return _dynStruct.double_str
                         else:
                             return None
-
+                        
             # Next analysis need a ctx_instr
             if not self.ctx_opcode:
                 return None
 
             # detect ptr if ctx = lea and instr = mov with the reg value
             # get from lea. If yes it's a ptr
+            if self.ctx_instr.getMnemonicString() == "LEA":
+                dest_reg = self.ctx_instr.getRegister(0)
+                if self.instr.getMnemonicString().startswith("MOV") and \
+                   self.instr.getRegister(1) is not None and \
+                   self.instr.getRegister(1) == dest_reg:
+                    op_objs = self.ctx_instr.getOpObjects(1)
+                    # Here's where I'm at
+
+
+
             if self.ctx_instr.id == capstone.x86.X86_INS_LEA:
                 dest_reg = self.ctx_instr.operands[0].reg
                 if self.instr.mnemonic.startswith('mov') and\

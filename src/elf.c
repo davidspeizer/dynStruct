@@ -246,7 +246,7 @@ void add_plt(const module_data_t *mod, void *got, void *drcontext)
   }
   else
     got += 3 * sizeof(void *);
-  //dr_printf("Found GOT at %p\n", got);
+  dr_printf("Found GOT at %p\n", got);
 
   new_node->data = got;
 
