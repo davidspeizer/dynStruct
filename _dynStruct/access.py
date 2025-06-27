@@ -125,15 +125,24 @@ class Access:
                    self.instr.getRegister(1) is not None and \
                    self.instr.getRegister(1) == dest_reg:
                     op_objs = self.ctx_instr.getOpObjects(1)
+                    uses_rip = False
+                    offset = None
+                    for obj in op_objs:
+                        if isinstance(obj, Register) and obj.getName() in ["RIP", "EIP"]:
+                            uses_rip = True
+                        elif isinstance(obj, Scalar):
+                            offset = obj.getValue()
+                    if uses_rip and offset is not None:
+                        if self.instr.getAddress() + offset / 4096 == self.instr.getAddress() / 4096:
+                            return _dynStruct.ptr_func_struct
+
                     # Here's where I'm at
 
-
-
-            if self.ctx_instr.id == capstone.x86.X86_INS_LEA:
-                dest_reg = self.ctx_instr.operands[0].reg
-                if self.instr.mnemonic.startswith('mov') and\
-                   self.instr.op_find(capstone.x86.X86_OP_REG, 1) and\
-                   self.instr.op_find(capstone.x86.X86_OP_REG, 1).reg == dest_reg:
+         #   if self.ctx_instr.id == capstone.x86.X86_INS_LEA:
+         #       dest_reg = self.ctx_instr.operands[0].reg
+         #       if self.instr.mnemonic.startswith('mov') and\
+         #          self.instr.op_find(capstone.x86.X86_OP_REG, 1) and\
+         #          self.instr.op_find(capstone.x86.X86_OP_REG, 1).reg == dest_reg:
 
                     # if ptr is on the same memory page than rip/eip it's a func ptr
                     op_src = self.ctx_instr.operands[1]
