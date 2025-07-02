@@ -1,3 +1,0 @@
-pyprind
-bottle
-capstone

@@ -16,11 +16,6 @@ dynStruct was the subject of my master thesis and also the subject of a publicat
 * CMake >= 2.8
 * [DynamoRIO](https://github.com/DynamoRIO/dynamorio) : Do not use the last release of DynamoRIO (there is a compilation error with one of the extension used by dynStruct). The last version at DynamoRIO [cronbuild](https://github.com/DynamoRIO/dynamorio/releases) is recommended. However in case of any problem [build 7.91.18109](https://github.com/DynamoRIO/dynamorio/releases/tag/cronbuild-7.91.18109) was sucessfully tested and can be use as safe fallback.
 
-### Structure recovery and web interface
-* Python3
-* [Capstone](http://www.capstone-engine.org/)
-* [Bottle](http://bottlepy.org/docs/dev/index.html)
-
 ## Setup
 ### Data Gatherer 
 Set the environment variable DYNAMORIO_HOME to the absolute path of your
@@ -29,9 +24,6 @@ DynamoRIO installation
 Execute `build.sh`
 
 To compile dynStruct for a 32bits target on a 64bits os execute `build.sh 32`
-
-### Structure recovery and web interface
-Install dependencies for dynStruct.py: `pip3 install -r requirements.txt`
 
 ## Data gatherer
 
