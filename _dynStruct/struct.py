@@ -1,6 +1,5 @@
 from .struct_member import StructMember
 import _dynStruct
-import pyprind
 import copy
 
 # list of classical function which we ignore the access
@@ -542,8 +541,9 @@ class Struct:
                 self.add_block(block)
 
     @staticmethod
-    def recover_all_struct(blocks, structs):        
-        prbar = pyprind.ProgBar(len(blocks), track_time=False, title="\nRecovering structures")
+    def recover_all_struct(blocks, structs):
+        monitor.initialize(len(blocks))
+        monitor.setMessage("Recovering structures")
         for block in blocks:
             if not block.w_access and not block.r_access:
                 continue
@@ -569,7 +569,7 @@ class Struct:
             else:
                 structs[-1].id = len(structs)
                 structs[-1].set_default_name()
-            prbar.update()
+            monitor.incrementProgress(1)
         print('\n')
 
     @staticmethod

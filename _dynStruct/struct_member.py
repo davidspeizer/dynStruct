@@ -162,7 +162,7 @@ class StructMember:
         try:
             size = int(forms.size)
         except ValueError:
-            return bottle.template("error", msg="Size is not an integer")
+            raise ValueError("Size is not an integer")
                 
         if size <= 0:
             raise ValueError("Size cannot be negative or Null")

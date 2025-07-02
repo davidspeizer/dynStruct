@@ -1,13 +1,11 @@
 import binascii
 import _dynStruct
 from ghidra.program.model.lang import Register
+from ghidra.program.model.scalar import Scalar
+from ghidra.program.model.lang import OperandType
 #import capstone
 
-#unsigned_int_instr = [capstone.x86.X86_INS_ADCX, capstone.x86.X86_INS_ADOX,
-#                      capstone.x86.X86_INS_DIV, capstone.x86.X86_INS_MUL,
-#                      capstone.x86.X86_INS_MULX]
-
-#xmm_regs = [xmm for xmm in range(capstone.x86.X86_REG_XMM0 - 1, capstone.x86.X86_REG_XMM31)]
+unsigned_int_mnemonics = ["ADCX", "ADOX", "DIV", "MUL", "MULX"]
 
 class Access:
 
@@ -84,12 +82,6 @@ class Access:
                 self.ctx_instr = getInstructionAt(toAddr(self.ctx_addr))
 
     def analyse_ctx(self, size):
-        #TODO extend analyse to other instruction and
-        # SSEX, AVX and other intel extension
-
-        if not hasattr(self, 'instr'):
-            self.disass()
-
         if self.t == 'write':
             # Detect if the written val is the result from a floating point register
             if self.instr.getMnemonicString().startswith("MOV"):
@@ -124,6 +116,7 @@ class Access:
                 if self.instr.getMnemonicString().startswith("MOV") and \
                    self.instr.getRegister(1) is not None and \
                    self.instr.getRegister(1) == dest_reg:
+                    # If the pointer is on the same memory pages as RIP/EIP, then it's a function pointer
                     op_objs = self.ctx_instr.getOpObjects(1)
                     uses_rip = False
                     offset = None
@@ -135,104 +128,92 @@ class Access:
                     if uses_rip and offset is not None:
                         if self.instr.getAddress() + offset / 4096 == self.instr.getAddress() / 4096:
                             return _dynStruct.ptr_func_struct
-
-                    # Here's where I'm at
-
-         #   if self.ctx_instr.id == capstone.x86.X86_INS_LEA:
-         #       dest_reg = self.ctx_instr.operands[0].reg
-         #       if self.instr.mnemonic.startswith('mov') and\
-         #          self.instr.op_find(capstone.x86.X86_OP_REG, 1) and\
-         #          self.instr.op_find(capstone.x86.X86_OP_REG, 1).reg == dest_reg:
-
-                    # if ptr is on the same memory page than rip/eip it's a func ptr
-                    op_src = self.ctx_instr.operands[1]
-                    if op_src.type == capstone.x86.X86_OP_MEM:
-                        if op_src.mem.base in [capstone.x86.X86_REG_RIP,
-                                               capstone.x86.X86_REG_EIP]:
-                            if op_src.mem.index == 0 and\
-                               int((op_src.mem.disp + self.instr.address) / 4096)\
-                               == int(self.instr.address / 4096):
-                                return _dynStruct.ptr_func_str
-
-                    # if not it's just a ptr because we cannot have more information
+                    # If not, it's just a pointer because we can't have more information.
                     return _dynStruct.ptr_str
 
-            # when the mov is an imm value on the same page than rip => func_ptr
-            if self.instr.mnemonic.startswith('mov') and\
-               self.instr.op_find(capstone.x86.X86_OP_IMM, 1) and\
-               size == _dynStruct.bits / 8:
-                if int(self.instr.address / 4096) ==\
-                   int(self.instr.operands[1].imm / 4096):
+            # If the move is an immediate value on the same page as RIP, then it's a function pointer.
+            if self.instr.getMnemonicString().startswith("MOV") and \
+                self.instr.getOperandType(1) == OperandType.IMMEDIATE and \
+                size == _dynStruct.bits / 8:
+                op_objs = self.instr.getOpObjects(1)
+                imm = None
+                for obj in op_objs:
+                    if isinstance(obj, Scalar):
+                        imm = obj.getValue()
+                if imm is None:
+                    return                
+                if int(self.instr.getAddress() / 4096) == int(imm / 4096):
                     return _dynStruct.ptr_func_str
 
-            # detecting if signed or unsigned
-            if self.instr.mnemonic.startswith('mov') and len(self.ctx_instr.operands) == 2:
-                dest_ctx_op = self.ctx_instr.operands[0]
-                src_op = self.instr.operands[1]
-                if dest_ctx_op.type == capstone.x86.X86_OP_REG and\
-                   src_op.type == capstone.x86.X86_OP_REG and\
-                   src_op.reg == dest_ctx_op.reg:
-                    if self.instr.id in unsigned_int_instr:
+            # Detect if signed or unsigned
+            if self.ctx_instr.getMnemonicString().startswith("MOV") and \
+                self.ctx_instr.getNumOperands() == 2:
+                destReg = self.ctx_instr.getRegister(0)
+                srcReg = self.instr.getRegister(1)
+                if destReg is not None and srcReg is not None and destReg == srcReg:
+                    if self.instr.getMnemonicString() in unsigned_int_mnemonics:
                         return _dynStruct.unsigned_str % (size)
 
         # For read access we can only detect ptr because a use of the value read
         # Basically member is pointer if the value read is dereferenced
         else:
-            if self.instr.id == capstone.x86.X86_INS_CALL:
+            if self.instr.getMnemonicString() == "CALL":
                 return _dynStruct.ptr_func_str
-
-            # For other instruction we need context to perform the analysis
             if not self.ctx_instr:
                 return None
-
-            if not self.instr.mnemonic.startswith('mov'):
+            if not self.instr.getMnemonicString().startswith("MOV"):
                 return None
-
-            # usually if the value is used later (not just a copy) the value
-            # is load into a register
-            dest_op = self.instr.operands[0]
-            if dest_op.type == capstone.x86.X86_OP_REG:
-
-                # if the register is an xmm register, the value is a floating
-                # point
-                if dest_op.reg in xmm_regs:
+            # If the value is used later (not just copied), the value is loaded into a register.
+            dest_reg = self.instr.getRegister(0)
+            if dest_reg is not None:
+                # Check if the value is a floating point.
+                if dest_reg.getName().startswith("xmm"):
                     if size == 4:
                         return _dynStruct.float_str
                     elif size == 8:
                         return _dynStruct.double_str
                     else:
                         return None
+                # If the context instruction is a call that uses the previous register, the value is a function pointer.
+                if self.ctx_instr.getMnemonicString() == "CALL":
+                    ctx_reg = self.ctx_instr.getRegister(0)
+                    if ctx_reg is not None and ctx_reg == dest_reg:
+                        return _dynStruct.ptr_func_str
 
-                # if the context instr is a call using the previously right
-                # reg, the value is a ptr to func
-                if self.ctx_instr.id == capstone.x86.X86_INS_CALL and\
-                   self.ctx_instr.operands[0].type == capstone.x86.X86_INS_CALL and\
-                   self.ctx_instr.operands[0].reg == dest_op.reg:
-                    return _dynStruct.ptr_func_str
-
-                for ctx_src_op in self.ctx_instr.operands:
-                    # if it's a mov with just base + disp and base == written register
-                    # it's likely to be a ptr sur struct or array
-                    if ctx_src_op.type == capstone.x86.X86_OP_MEM and\
-                       ctx_src_op.mem.base == dest_op.reg:
-
-                        # if disp != 0 it's certainly a struct ptr
-                        if ctx_src_op.mem.segment == 0 and ctx_src_op.mem.disp != 0:
+                # If the context instruction is a mov with base+disp and base is the written register,
+                # then it's likely a struct pointer or an array.
+                for i in range(self.ctx_instr.getNumOperands()):
+                    op_objs = self.ctx_instr.getOpObjects(i)
+                    memBase = None
+                    hasIndexReg = False
+                    hasSegmentReg = False
+                    memDisp = None
+                    for obj in op_objs:
+                        # If we have 
+                        if isinstance(obj, Register):
+                            if len(obj.getName()) == 2 and obj.getName()[1] == 'S':
+                                hasSegmentReg = True
+                            if memBase is None:
+                                memBase = obj
+                            else:
+                                hasIndexReg = True
+                        elif isinstance(obj, Scalar):
+                            memDisp = obj
+                    if memBase == dest_reg:
+                        if not hasSegmentReg and memDisp != 0:
                             return _dynStruct.ptr_struct_str
-
-                        # if disp == 0 and index != 0 it's certainly an array
-                        if ctx_src_op.mem.segment == 0 and ctx_src_op.mem.index != 0:
+                        if not hasSegmentReg and hasIndexReg:
                             return _dynStruct.ptr_array_str
-
-                        # else it's a pointer with no more information
+                        # Otherwise it's a pointer with no more information
                         return _dynStruct.ptr_str
-
+                
                 # if the context instr have 2 operand and the second one use
                 # the written ptr as base, it's ptr
-                if (self.ctx_instr.operands) == 2 and\
-                   self.ctx_instr.operands[1].type == capstone.x86.X86_OP_MEM and\
-                   self.ctx_instr.operands[1].reg == ctx_src_op:
-                    return _dynStruct.ptr_str
+                # This will never execute. I'll leave it commented out here for now and come back to it if I determine it to be necessary.
+               # if (self.ctx_instr.operands) == 2 and\
+               #    self.ctx_instr.operands[1].type == capstone.x86.X86_OP_MEM and\
+               #    self.ctx_instr.operands[1].reg == ctx_src_op:
+               #     return _dynStruct.ptr_str
 
         return None
 
