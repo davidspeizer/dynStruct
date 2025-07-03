@@ -3,13 +3,12 @@ import _dynStruct
 from ghidra.program.model.lang import Register
 from ghidra.program.model.scalar import Scalar
 from ghidra.program.model.lang import OperandType
-#import capstone
 
 unsigned_int_mnemonics = ["ADCX", "ADOX", "DIV", "MUL", "MULX"]
 
 class Access:
 
-    def __init__(self, access, orig, addr_start, block, t):
+    def __init__(self, access, orig, module_start, addr_start, block, t):
         self.block = block
         self.offset = access
         self.addr = addr_start + self.offset
@@ -29,6 +28,11 @@ class Access:
         
         for k in json_attrib:
             setattr(self, k, (orig[k]))
+
+        print("Module addr: " + hex(module_start))
+
+        self.pc = self.pc - module_start + currentProgram.getImageBase()
+        self.ctx_addr = self.ctx_addr - module_start + currentProgram.getImageBase()
 
         self.disass()
 

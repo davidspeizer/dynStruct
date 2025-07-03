@@ -3,7 +3,8 @@ from . import Access
 class Block:
 
 
-    def __init__(self, block, l_access_w, l_access_r, id_block):
+    def __init__(self, block, modules, l_access_w, l_access_r, id_block):
+        print("Initializing block")
         self.struct = None
         self.id_block = id_block
         
@@ -17,18 +18,29 @@ class Block:
 
         for k in json_attrib:
             setattr(self, k, cast_attr.get(k, block[k].__class__)(block[k]))
+
+        for name, address in modules:
+            if address <= self.start:
+                result = (name, address)
+            else:
+                break
+        
+        print("allocation is at " + hex(self.alloc_pc) + ". This is in module " + result[0] + " which starts at " + hex(result[1]))
+        print("Offset is therefore " + hex(self.alloc_pc - result[1]))
             
         self.r_access = []
         self.w_access = []
 
         for access in filter(None, block["read_access"]):
+            # This goes through every time that the allocated block is accessed for reading
             for orig in filter(None, access["details"]):
-                self.r_access.append(Access(access["offset"], orig, self.start, self, 'read'))
+                self.r_access.append(Access(access["offset"], orig, result[1], self.start, self, 'read'))
                 l_access_r.append(self.r_access[-1])
             
         for access in filter(None, block["write_access"]):
+            # This goes through every time that the allocated block is accessed for writing
                 for orig in filter(None, access["details"]):
-                    self.w_access.append(Access(access["offset"], orig, self.start, self, 'write'))
+                    self.w_access.append(Access(access["offset"], orig, result[1], self.start, self, 'write'))
                     l_access_w.append(self.w_access[-1])
 
         Access.remove_instrs(self.r_access + self.w_access)
