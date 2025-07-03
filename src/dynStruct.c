@@ -19,6 +19,8 @@
 malloc_t *old_blocks = NULL;
 tree_t *active_blocks = NULL;
 int tls_stack_idx = -1;
+bool mod_json_initialized = false;
+file_t mod_json_file = INVALID_FILE;
 void *lock;
 
 static void thread_exit_event(void *drcontext)
@@ -146,6 +148,16 @@ static void load_event(void *drcontext,
   // We'll want to save that to get memory offsets of malloc calls.
   dr_printf("Found data. start=%#p, got=%#p, malloc=%#p\n", tmp_data.start, tmp_data.got, malloc);
 
+  // I want to write the module information to a JSON file
+  if (!mod_json_initialized) {
+    char mod_file_out[256];
+    snprintf(mod_file_out, sizeof(mod_file_out), "%s_modules", args->out_name);
+    mod_json_file = dr_open_file(mod_file_out, DR_FILE_WRITE_OVERWRITE);
+    dr_fprintf(mod_json_file, "{\"modules\": [");
+    mod_json_initialized = true;
+  }
+  dr_fprintf(mod_json_file, "{\"%s\": %llu}, ", dr_module_preferred_name(mod), tmp_data.start);
+
   add_plt(mod, tmp_data.got, drcontext);
   dr_mutex_unlock(lock);
 
@@ -200,6 +212,8 @@ static void exit_event(void)
   drwrap_exit();
   drmgr_exit();
   drutil_exit();
+  dr_fprintf(mod_json_file, "{}]}");
+  dr_close_file(mod_json_file);
 }
 
 DR_EXPORT void dr_client_main(client_id_t __attribute__((unused)) id,
@@ -219,6 +233,7 @@ DR_EXPORT void dr_client_main(client_id_t __attribute__((unused)) id,
   drmgr_init();
   drutil_init();
 
+  // Parse the arguments and create the output file. Populate it with is_64.
   if (!parse_arg(argc, (char **)argv))
     dr_abort();
   dr_register_exit_event(&exit_event);
