@@ -108,13 +108,14 @@ class Access:
                     # Check if the context was a MOV instruction that is being read by our current instruction.
                     dest_ctx_reg = self.ctx_instr.getRegister(0)
                     src_ctx_op = self.ctx_instr.getRegister(1)
-                    if dest_ctx_reg is not None and self.instr.getRegister(1) == dest_ctx_reg and src_ctx_op.getName().startswith("xmm"):
-                        if size == 4:
-                            return _dynStruct.float_str
-                        elif size == 8:
-                            return _dynStruct.double_str
-                        else:
-                            return None
+                    if dest_ctx_reg is not None and self.instr.getRegister(1) == dest_ctx_reg:
+                        if src_ctx_op is not None and src_ctx_op.getName().startswith("xmm"):
+                            if size == 4:
+                                return _dynStruct.float_str
+                            elif size == 8:
+                                return _dynStruct.double_str
+                            else:
+                                return None
                         
             # Next analysis need a ctx_instr
             if not self.ctx_opcode:
