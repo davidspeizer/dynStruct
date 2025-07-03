@@ -14,6 +14,7 @@ class Access:
         self.addr = addr_start + self.offset
         self.size = orig["size_access"]
         self.t = t
+        self.listing = block.program.getListing()
 
         if len(orig["opcode"]) % 2:
             orig["opcode"] = "0" + orig["opcode"]
@@ -31,27 +32,27 @@ class Access:
 
         print("Module addr: " + hex(module_start))
 
-        self.pc = self.pc - module_start + currentProgram.getImageBase()
-        self.ctx_addr = self.ctx_addr - module_start + currentProgram.getImageBase()
+        self.pc = self.pc - module_start + block.program.getImageBase().getOffset()
+        self.ctx_addr = self.ctx_addr - module_start + block.program.getImageBase().getOffset()
 
         self.disass()
 
-        self.instr_display = '<span class="text-success"><strong>%s</strong>\
-        </span><span class="text-info">%s</span>' % (self.instr.mnemonic,
-                                                     self.instr.op_str)
-        self.instr_search = '%s %s' % (self.instr.mnemonic, self.instr.op_str)
+     #   self.instr_display = '<span class="text-success"><strong>%s</strong>\
+      #  </span><span class="text-info">%s</span>' % (self.instr.mnemonic,
+      #                                               self.instr.op_str)
+        self.instr_search = '%s' % (self.instr.toString())
         if self.ctx_opcode:
-            if self.ctx_addr > self.pc:
-                self.ctx_instr_display = "Next : "
-            else:
-                self.ctx_instr_display = "Prev : "
-            self.ctx_instr_display += '<span class="text-success"><strong>%s</strong>\
-            </span><span class="text-info">%s</span>' % (self.ctx_instr.mnemonic,
-                                                         self.ctx_instr.op_str)
-            self.ctx_instr_search = '%s %s' % (self.ctx_instr.mnemonic, self.ctx_instr.op_str)
+        #   if self.ctx_addr > self.pc:
+        #        self.ctx_instr_display = "Next : "
+        #    else:
+        #        self.ctx_instr_display = "Prev : "
+        #    self.ctx_instr_display += '<span class="text-success"><strong>%s</strong>\
+        #    </span><span class="text-info">%s</span>' % (self.ctx_instr.mnemonic,
+        #                                                 self.ctx_instr.op_str)
+            self.ctx_instr_search = '%s' % (self.ctx_instr.toString())
         else:
             self.ctx_instr_search = 'No context'
-            self.ctx_instr_display = '<span class="text-danger">No context</span>'
+         #   self.ctx_instr_display = '<span class="text-danger">No context</span>'
 
     def is_offset(self, offset):
         return self.offset == offset
@@ -77,15 +78,21 @@ class Access:
 
     def disass(self):
         print("Calling disass with pc=0x{:x}, ctx_addr=0x{:x}".format(self.pc, self.ctx_addr))
-    #    if not _dynStruct.disasm:
-    #        _dynStruct.create_disasm()
+
+        pc_addr = self.block.program.getAddressFactory().getDefaultAddressSpace().getAddress(self.pc)
+        ctx_addr = self.block.program.getAddressFactory().getDefaultAddressSpace().getAddress(self.ctx_addr)
 
         if not hasattr(self, 'instr'):
-            self.instr = getInstructionAt(toAddr(self.pc))
+            self.instr = self.listing.getInstructionAt(pc_addr)
+            print("Instruction: " + self.instr.toString())
             if self.ctx_opcode:
-                self.ctx_instr = getInstructionAt(toAddr(self.ctx_addr))
+                self.ctx_instr = self.listing.getInstructionAt(ctx_addr)
+                print("Context instruction: " + self.ctx_instr.toString())
 
     def analyse_ctx(self, size):
+        if not hasattr(self, 'instr'):
+            self.disass()
+            
         if self.t == 'write':
             # Detect if the written val is the result from a floating point register
             if self.instr.getMnemonicString().startswith("MOV"):

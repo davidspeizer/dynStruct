@@ -73,6 +73,7 @@ class Struct:
         self.members.append(new_member)
 
     def recover(self, block):
+        print("Recover called")
         actual_offset = 0
 
      #   if not _dynStruct.disasm:
@@ -541,7 +542,7 @@ class Struct:
                 self.add_block(block)
 
     @staticmethod
-    def recover_all_struct(blocks, structs):
+    def recover_all_struct(blocks, structs, monitor):
         monitor.initialize(len(blocks))
         monitor.setMessage("Recovering structures")
         for block in blocks:
@@ -573,11 +574,11 @@ class Struct:
         print('\n')
 
     @staticmethod
-    def clean_all_struct(structs, cleaning):
+    def clean_all_struct(structs):
         print("Cleaning structs. Currently have", len(structs), "structs")
         list_structs = list(structs)
         for struct in list_structs:
-            if cleaning and struct.not_a_struct():
+            if struct.not_a_struct():
                 struct.remove_all_block()
                 structs.remove(struct)
             struct.clean_struct()

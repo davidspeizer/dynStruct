@@ -3,10 +3,11 @@ from . import Access
 class Block:
 
 
-    def __init__(self, block, modules, l_access_w, l_access_r, id_block):
+    def __init__(self, block, modules, l_access_w, l_access_r, id_block, program):
         print("Initializing block")
         self.struct = None
         self.id_block = id_block
+        self.program = program
         
         cast_attr = {"free_by_realloc" : bool,
                      "alloc_by_realloc" : bool,
@@ -47,6 +48,8 @@ class Block:
 
     def get_access_by_offset(self, offset):
         ret = []
+        print(str(len(self.r_access)) + " read accesses and " + str(len(self.w_access)) + " write acceses.")
+ #       print(self.w_access[0].instr.toString())
         for access in self.r_access + self.w_access:
             if access.is_offset(offset):
                 ret.append(access)
