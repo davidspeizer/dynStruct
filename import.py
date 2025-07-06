@@ -56,6 +56,7 @@ currentBinary = currentProgram.getExecutablePath()
 if currentBinary:
     absPath = os.path.dirname(str(getSourceFile().getAbsolutePath()))
 
+    # Prepare the output files for our DynamoRIO run.
     script_path = os.path.join(absPath, "DynamoRIO-Linux-11.90.20236/bin64/drrun")
     output_file = os.path.join(absPath, "dynStruct_out")
     module_file = os.path.join(absPath, "dynStruct_out_modules")
@@ -64,9 +65,11 @@ if currentBinary:
     if os.path.exists(output_file):
         os.remove(output_file)
 
+    # Run the program under DynamoRIO instrumentation
     success = run_command([script_path, "-c", dynStruct_path, "-o", output_file, "--", currentBinary])
 
     if success and os.path.exists(output_file):
+        # Open the JSON information on our allocated blocks and our module base addresses
         json_data = open_json(output_file)
         jsonModules = open_json(module_file)
 
@@ -78,13 +81,18 @@ if currentBinary:
             print("Failed to load JSON from dynamoRIO")
         else:
             print("Loading JSON")
+            # Analyze the JSON output and save off the blocks
             load_json(json_data, modules, _dynStruct.l_block, _dynStruct.l_access_w, _dynStruct.l_access_r)
             print(len(_dynStruct.l_block))
             print("Recovering structures")
+            # Generate structures from the blocks
             _dynStruct.Struct.recover_all_struct(_dynStruct.l_block, _dynStruct.l_struct, monitor)
             print("Cleaning structures")
+            # Clean up the structures, eliminating arrays from the list.
             _dynStruct.Struct.clean_all_struct(_dynStruct.l_struct)
             print("Printing structures")
+            # Print the structures to the console.
+            # TODO: Change this to edit the Ghidra decomp.
             _dynStruct.print_to_console(_dynStruct.l_struct)
     else:
         print("Failed to run external script or output file not found.")
