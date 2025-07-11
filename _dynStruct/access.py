@@ -3,6 +3,18 @@ import _dynStruct
 from ghidra.program.model.lang import Register
 from ghidra.program.model.scalar import Scalar
 from ghidra.program.model.lang import OperandType
+from ghidra.program.model.data import (
+    ByteDataType,
+    UnsignedShortDataType,
+    UnsignedInteger3DataType,
+    UnsignedIntegerDataType,
+    UnsignedInteger5DataType,
+    UnsignedInteger6DataType,
+    UnsignedInteger7DataType,
+    UnsignedLongDataType,
+    UnsignedInteger16DataType,
+    FloatDataType
+)
 
 unsigned_int_mnemonics = ["ADCX", "ADOX", "DIV", "MUL", "MULX"]
 
@@ -77,19 +89,19 @@ class Access:
         return False
 
     def disass(self):
-        print("Calling disass with pc=0x{:x}, ctx_addr=0x{:x}".format(self.pc, self.ctx_addr))
+       # print("Calling disass with pc=0x{:x}, ctx_addr=0x{:x}".format(self.pc, self.ctx_addr))
 
         pc_addr = self.block.program.getAddressFactory().getDefaultAddressSpace().getAddress(self.pc)
         ctx_addr = self.block.program.getAddressFactory().getDefaultAddressSpace().getAddress(self.ctx_addr)
 
         if not hasattr(self, 'instr'):
             self.instr = self.listing.getInstructionAt(pc_addr)
-            print("Instruction: " + self.instr.toString())
+         #   print("Instruction: " + self.instr.toString())
             if self.ctx_opcode:
                 self.ctx_instr = self.listing.getInstructionAt(ctx_addr)
-                print("Context instruction: " + self.ctx_instr.toString())
+             #   print("Context instruction: " + self.ctx_instr.toString())
 
-    def analyse_ctx(self, size):
+    def analyze_ctx(self, size):
         if not hasattr(self, 'instr'):
             self.disass()
             
@@ -99,7 +111,7 @@ class Access:
                 src_op = self.instr.getRegister(1)
                 if src_op is not None and src_op.getName().startswith("xmm"):
                     if size == 4:
-                        return _dynStruct.float_str
+                        return FloatDataType.dataType
                     elif size == 8:
                         return _dynStruct.double_str
                     else:
@@ -164,7 +176,25 @@ class Access:
                 srcReg = self.instr.getRegister(1)
                 if destReg is not None and srcReg is not None and destReg == srcReg:
                     if self.instr.getMnemonicString() in unsigned_int_mnemonics:
-                        return _dynStruct.unsigned_str % (size)
+                        if size == 1:
+                            return ByteDataType.dataType
+                        elif size == 2:
+                            return UnsignedShortDataType.dataType
+                        elif size == 3:
+                            return UnsignedInteger3DataType.dataType
+                        elif size == 4:
+                            return UnsignedIntegerDataType.dataType
+                        elif size == 5:
+                            return UnsignedInteger5DataType.dataType
+                        elif size == 6:
+                            return UnsignedInteger6DataType.dataType
+                        elif size == 7:
+                            return UnsignedInteger7DataType.dataType
+                        elif size == 8:
+                            return UnsignedLongDataType.dataType
+                        elif size == 16:
+                            return UnsignedInteger16DataType.dataType
+                        return None
 
         # For read access we can only detect ptr because a use of the value read
         # Basically member is pointer if the value read is dereferenced

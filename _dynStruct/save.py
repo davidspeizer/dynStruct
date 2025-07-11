@@ -19,6 +19,7 @@ def print_to_file(filename, l_struct):
 
 
 def print_to_console(l_struct):
+    print(l_struct)
     print(get_header(l_struct))
 
 def save_pickle(filename, l_struct, l_block, l_access_w, l_access_r):

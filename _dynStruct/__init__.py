@@ -19,6 +19,9 @@ from .processing import filter_block
 from .processing import filter_access
 from .processing import sorting_block
 from .processing import sorting_access
+from ghidra.program.model.data import (
+    PointerDataType, VoidDataType, FunctionDefinitionDataType, TypedefDataType
+)
 
 bits = 0
 
@@ -29,10 +32,13 @@ l_access_r = []
 serialized_file = ""
 #disasm = None
 
-ptr_func_str = 'void(*%s)()'
-ptr_struct_str = 'void * // pointer to structure'
-ptr_array_str = 'void * // pointer to array'
-ptr_str = 'void *'
-double_str = 'double'
-float_str = 'float'
-unsigned_str = 'uint%d_t'
+func_def = FunctionDefinitionDataType("func_ptr")
+func_def.setReturnType(VoidDataType.dataType)
+ptr_func_str = PointerDataType(func_def)
+
+ptr_struct_str = TypedefDataType("ptr_struct", PointerDataType(VoidDataType.dataType))
+ptr_array_str = TypedefDataType("ptr_array", PointerDataType(VoidDataType.dataType))
+ptr_str = PointerDataType(VoidDataType.dataType)
+#double_str = DoubleDataType()
+#float_str = FloatDataType()
+#unsigned_str = 'uint%d_t'

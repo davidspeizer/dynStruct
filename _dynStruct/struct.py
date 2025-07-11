@@ -1,4 +1,5 @@
-from .struct_member import StructMember
+#from .struct_member import StructMember
+from ghidra.program.model.data import StructureDataType
 import _dynStruct
 import copy
 
@@ -14,19 +15,20 @@ min_size_array = 5
 
 class Struct:
 
-
     def __init__(self, block, is_sub=False):
         self.name = ""
         self.id = 0
         self.blocks = []
-        self.looks_array = False;
+        self.looks_array = False
         self.size_array_unit = 0
         self.members = []
         self.is_sub_struct = is_sub
         self.size = 0
+        self.ghidraStruct = StructureDataType(self.name, self.size)
         
         if block:
             self.size = block.size
+            self.ghidraStruct.setLength(block.size)
             self.recover(block)
             self.add_block(block)
 
@@ -96,11 +98,13 @@ class Struct:
             
             size_member = self.get_best_size(accesses)
             t = self.get_type(accesses, size_member)
-            self.members.append(StructMember(actual_offset, size_member, t))
+            self.ghidraStruct.insertAtOffset(actual_offset, t, size_member)
+            #self.members.append(StructMember(actual_offset, size_member, t))
             actual_offset += size_member
 
     def set_default_name(self):
-        self.name = "struct_%d" % self.id            
+        self.name = "struct_%d" % self.id
+        self.ghidraStruct.setName(self.name)           
 
     def clean_struct(self):
         self.add_pad()
@@ -389,19 +393,19 @@ class Struct:
 
         types = {}
         for access in accesses:
-            t = access.analyse_ctx(size)
+            t = access.analyze_ctx(size)
             if t and t in types.keys():
                 types[t] += access.nb_access
             elif t:
                 types[t] = access.nb_access
 
         _dynStruct.Access.remove_instrs(accesses)
-        # ptr_struct_str and ptr_array_str are ptr_str with a comment
-        # they provide more information but are the same C type than ptr_str
-        # So they have to be prioritary on ptr_str
-        if _dynStruct.ptr_str in types and\
-           (_dynStruct.ptr_array_str or _dynStruct.ptr_struct_str):
-            types[_dynStruct.ptr_str] = 0
+        # ptr_struct_str and ptr_array_str are ptr_generic with a comment
+        # they provide more information but are the same C type than ptr_generic
+        # So they have to be prioritary on ptr_generic
+        if _dynStruct.ptr_generic in types and\
+           (_dynStruct.ptr_array or _dynStruct.ptr_struct):
+            types[_dynStruct.ptr_generic] = 0
 
         if not len(types):
             return "int%d_t" % (size * 8)

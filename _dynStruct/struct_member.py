@@ -4,6 +4,7 @@ class StructMember:
 
 
     def __init__(self, offset, size, t = None):
+        print("New member with t = " + t)
         self.offset = offset
         self.size = size
         if not t:

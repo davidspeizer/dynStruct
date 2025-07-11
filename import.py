@@ -94,5 +94,9 @@ if currentBinary:
             # Print the structures to the console.
             # TODO: Change this to edit the Ghidra decomp.
             _dynStruct.print_to_console(_dynStruct.l_struct)
+            for struct in _dynStruct.l_struct:
+                print("Structure has " + str(len(struct.blocks)) + " blocks")
+                for b in struct.blocks:
+                    print(b.alloc_pc)
     else:
         print("Failed to run external script or output file not found.")
