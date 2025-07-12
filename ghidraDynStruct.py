@@ -253,17 +253,25 @@ if success and os.path.exists(output_file):
                     exit()
 
                 highVar = varnode.getHigh()
-                if highVar is None:
-                    print("Could not get HighVariable for alloc at " + addr.toString())
-                    exit()
+                highSym = None
+                if highVar is not None:
+                    highSym = highVar.getSymbol()
 
-                highSym = highVar.getSymbol()
+                # The decompilation might be such that the symbol can't be found from the pcode ops.
+                # If that's the case, then check the existing symbol table for the proper address.
                 if highSym is None:
-                    print("Could not get HighSymbol for alloc at " + addr.toString())
-                    continue
+                    syms = highFunc.getLocalSymbolMap().getSymbols()
+                    while syms.hasNext():
+                        sym = syms.next()
+                        if sym.getPCAddress() == addr:
+                            highSym = sym
+                            break
+
+                if highSym is None:
+                    print("Could not find HighSymbol for alloc at " + addr.toString())
 
                 # Edit the decompilation to change the variable
-                HighFunctionDBUtil.updateDBVariable(highSym, highVar.getName(), structPtr, SourceType.USER_DEFINED)
+                HighFunctionDBUtil.updateDBVariable(highSym, highSym.getName(), structPtr, SourceType.USER_DEFINED)
                 print("Changed data type at " + addr.toString())
         
         # Cleanup
