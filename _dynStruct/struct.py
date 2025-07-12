@@ -73,11 +73,7 @@ class Struct:
         self.members.append(new_member)
 
     def recover(self, block):
-        print("Recover called")
         actual_offset = 0
-
-     #   if not _dynStruct.disasm:
-     #       _dynStruct.create_disasm()
 
         while actual_offset < self.size:
             accesses = block.get_access_by_offset(actual_offset)

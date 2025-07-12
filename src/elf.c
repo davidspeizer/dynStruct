@@ -176,37 +176,7 @@ void *get_got_from_plt(void *plt, void *drc)
     }
   }
   instr_destroy(drc, instr);
-  //printf("Found GOT at %p\n", got);
   return got + sizeof(void *);
-
-  /*
-    void *jmp_pc = dr_app_pc_for_decoding(decode_next_pc(drc, plt));
-    // ^This doesn't work. I don't know if it's a problem with DYNAMRIO or what, but the decode here is broken.
-    // It's just luck of the draw that everything doesn't crash.
-    instr_t *instr = instr_create(drc);
-    void *got = NULL;
-
-    dr_printf("Getting GOT from PLT. PLT=%p. jmp_pc=%p\n", plt, jmp_pc);
-
-    instr_init(drc, instr);
-  if (!decode(drc, jmp_pc, instr))
-  {
-    dr_printf("2 Decode of instruction at %p failed\n", jmp_pc);
-    instr_destroy(drc, instr);
-    return NULL;
-  }
-  if (instr_get_opcode(instr) == OP_jmp_ind)
-#ifdef BUILD_64
-    instr_get_rel_addr_target(instr, (app_pc *)(&got));
-#else
-    got = opnd_get_addr(instr_get_target(instr));
-#endif
-  instr_destroy(drc, instr);
-  printf("Found GOT at %p\n", got);
-
-  return got + sizeof(void *);
-
-    */
 }
 
 void add_plt(const module_data_t *mod, void *got, void *drcontext)
@@ -246,7 +216,6 @@ void add_plt(const module_data_t *mod, void *got, void *drcontext)
   }
   else
     got += 3 * sizeof(void *);
-  dr_printf("Found GOT at %p\n", got);
 
   new_node->data = got;
 

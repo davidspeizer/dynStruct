@@ -30,29 +30,16 @@ class Access:
         for k in json_attrib:
             setattr(self, k, (orig[k]))
 
-        print("Module addr: " + hex(module_start))
-
         self.pc = self.pc - module_start + block.program.getImageBase().getOffset()
         self.ctx_addr = self.ctx_addr - module_start + block.program.getImageBase().getOffset()
 
         self.disass()
 
-     #   self.instr_display = '<span class="text-success"><strong>%s</strong>\
-      #  </span><span class="text-info">%s</span>' % (self.instr.mnemonic,
-      #                                               self.instr.op_str)
         self.instr_search = '%s' % (self.instr.toString())
         if self.ctx_opcode:
-        #   if self.ctx_addr > self.pc:
-        #        self.ctx_instr_display = "Next : "
-        #    else:
-        #        self.ctx_instr_display = "Prev : "
-        #    self.ctx_instr_display += '<span class="text-success"><strong>%s</strong>\
-        #    </span><span class="text-info">%s</span>' % (self.ctx_instr.mnemonic,
-        #                                                 self.ctx_instr.op_str)
             self.ctx_instr_search = '%s' % (self.ctx_instr.toString())
         else:
             self.ctx_instr_search = 'No context'
-         #   self.ctx_instr_display = '<span class="text-danger">No context</span>'
 
     def is_offset(self, offset):
         return self.offset == offset

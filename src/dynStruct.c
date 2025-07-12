@@ -146,7 +146,6 @@ static void load_event(void *drcontext,
 
   // `start` here is the memory address of the beginning of the loaded program.
   // We'll want to save that to get memory offsets of malloc calls.
-  dr_printf("Found data. start=%#p, got=%#p, malloc=%#p\n", tmp_data.start, tmp_data.got, malloc);
 
   // I want to write the module information to a JSON file
   if (!mod_json_initialized) {

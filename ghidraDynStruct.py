@@ -86,6 +86,7 @@ if os.path.exists(output_file):
     os.remove(output_file)
 
 # Run the program under DynamoRIO instrumentation
+print("Running program under DynamoRIO instrumentation...\n")
 success = run_command([script_path, "-c", dynStruct_path, "-o", output_file, "--", currentBinary])
 
 if success and os.path.exists(output_file):
@@ -96,22 +97,24 @@ if success and os.path.exists(output_file):
     # Load the base addresses of all our modules and sort them.
     modules = [ (name, address) for mod in jsonModules["modules"] for name, address in mod.items()]
     modules.sort(key=lambda x: x[1])
-    print(modules)
     if json_data is None:
         print("Failed to load JSON from dynamoRIO")
     else:
-        print("Loading JSON")
+        print("\nProgram successfully run. Loading JSON...")
         # Analyze the JSON output and save off the blocks
         load_json(json_data, modules, _dynStruct.l_block, _dynStruct.l_access_w, _dynStruct.l_access_r)
-        print(len(_dynStruct.l_block))
-        print("Recovering structures")
+        print("Recovering structures...")
 
         # Generate structures from the blocks
         _dynStruct.Struct.recover_all_struct(_dynStruct.l_block, _dynStruct.l_struct, monitor)
 
-        print("Cleaning structures")
+        print("Cleaning structures...")
         # Clean up the structures, eliminating arrays from the list.
         _dynStruct.Struct.clean_all_struct(_dynStruct.l_struct)
+
+        if len(_dynStruct.l_struct) == 0:
+            print("No structures found. Exiting.")
+            exit()
 
         # Import the structures into Ghidra.
         # Right now we're creating the structures as a header file and then importing that header file.

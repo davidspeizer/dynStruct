@@ -4,7 +4,6 @@ class Block:
 
 
     def __init__(self, block, modules, l_access_w, l_access_r, id_block, program):
-        print("Initializing block")
         self.struct = None
         self.id_block = id_block
         self.program = program
@@ -25,9 +24,6 @@ class Block:
                 result = (name, address)
             else:
                 break
-        
-        print("allocation is at " + hex(self.alloc_pc) + ". This is in module " + result[0] + " which starts at " + hex(result[1]))
-        print("Offset is therefore " + hex(self.alloc_pc - result[1]))
             
         self.allocOffset = self.alloc_pc - result[1]
         self.r_access = []

@@ -159,7 +159,6 @@ void balance_tree(tree_t *node, tree_t **tree)
 
 int add_to_tree(tree_t **tree, tree_t *node)
 {
-  dr_printf("Called add_to_tree\n");
   tree_t *parent;
   int balance;
 

@@ -74,7 +74,6 @@ void post_calloc(void *wrapctx, void *user_data)
 void pre_malloc(void *wrapctx, void **user_data)
 {
   void		*drc;
-  dr_printf("Malloc called\n");
 
   drc = drwrap_get_drcontext(wrapctx);
   dr_mutex_lock(lock);

@@ -8,8 +8,6 @@
 
 malloc_t *add_block(size_t size, void *pc, void *drcontext)
 {
-  dr_printf("New block of size %d at pc=%p\n", size, pc);
-  // dr_custom_alloc(void* drcontext, dr_alloc_flags_t flags, size_t size, uint prot, void* addr)
   // Allocates memory with the properties requeted by FLAGS.
   malloc_t *new = dr_custom_alloc(NULL, 0, sizeof(*new),
                                   DR_MEMPROT_WRITE | DR_MEMPROT_READ, NULL);
