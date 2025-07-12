@@ -82,7 +82,7 @@ dynStruct_path = os.path.join(absPath, "dynStruct")
 fileChooser = GhidraFileChooser(None)
 fileChooser.setTitle("Select the DynamoRIO home folder")
 fileChooser.setApproveButtonText("Select")
-fileChooser.setFileSelectionMode(GhidraFileChooser.FILES_ONLY)
+fileChooser.setFileSelectionMode(GhidraFileChooser.DIRECTORIES_ONLY)
 dynamoRioHome = fileChooser.getSelectedFile().getAbsolutePath()
 script_path = os.path.join(dynamoRioHome, "bin" + str(programSize), "drrun")
 
