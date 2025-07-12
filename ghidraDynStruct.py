@@ -167,9 +167,15 @@ if not os.path.exists(dynStruct_path):
 if os.path.exists(output_file):
     os.remove(output_file)
 
+programArgs = ""
+if askYesNo("Need Args", "Do you want to enter any arguments to run with " + currentBinary + "?"):
+    programArgs = askString("Program Args", "Arguments:", "")
+
+command = [script_path, "-c", dynStruct_path, "-o", output_file, "--", currentBinary] + programArgs.split()
+
 # Run the program under DynamoRIO instrumentation
 print("Running program under DynamoRIO instrumentation...\n")
-success = run_command([script_path, "-c", dynStruct_path, "-o", output_file, "--", currentBinary])
+success = run_command(command)
 
 if success and os.path.exists(output_file):
     # Open the JSON information on our allocated blocks and our module base addresses
