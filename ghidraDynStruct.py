@@ -1,8 +1,8 @@
-from java.lang import Runtime
-from java.io import BufferedReader, InputStreamReader
+from java.lang import Runtime, String, System, Runnable
+from java.io import BufferedReader, InputStreamReader, File
+import jarray
 import json
 import os
-import subprocess
 import _dynStruct
 from ghidra.app.util.cparser.C import CParserUtils
 from ghidra.app.decompiler import DecompInterface
@@ -12,18 +12,77 @@ from ghidra.program.model.pcode import PcodeOp
 from ghidra.program.model.symbol import SourceType
 from docking.widgets.filechooser import GhidraFileChooser
 
-def run_command(command):
+from java.lang import Thread
+from java.io import BufferedReader, InputStreamReader
+
+# Define a class here to help run external programs and manage stdout/stderr prints.
+# Doing this mostly with Java syntax rather than python because that seems to work better.
+class StreamReader(Runnable):
+    def __init__(self, stream, prefix):
+        self.stream = stream
+        self.prefix = prefix
+    
+    def run(self):
+        reader = BufferedReader(InputStreamReader(self.stream))
+        try:
+            while True:
+                line = reader.readLine()
+                if line is None:
+                    break
+                print(self.prefix, line)
+        except:
+            pass  # Stream closed
+        finally:
+            reader.close()
+
+def run_command(command, env_vars=None, working_dir=None):
     try:
         print("Running command:", command)
-        process = Runtime.getRuntime().exec(command)
-        reader = BufferedReader(InputStreamReader(process.getInputStream()))
-        while True:
-            line = reader.readLine()
-            if line is None:
-                break
-            print(line)
-        process.waitFor()
-        return process.exitValue() == 0
+        if working_dir:
+            print("Working directory:", working_dir)
+        
+        if env_vars:
+            # Get current environment and add/override with provided vars
+            current_env = System.getenv()
+            env_list = []
+            
+            # Add existing environment variables
+            for key in current_env.keySet():
+                env_list.append(str(key) + "=" + str(current_env.get(key)))
+            
+            # Add/override with provided environment variables
+            for key, value in env_vars.items():
+                env_list.append(str(key) + "=" + str(value))
+            
+            # Convert to Java array
+            env_java_array = jarray.array(env_list, String)
+            
+            if working_dir:
+                process = Runtime.getRuntime().exec(command, env_java_array, File(working_dir))
+            else:
+                process = Runtime.getRuntime().exec(command, env_java_array)
+        else:
+            if working_dir:
+                process = Runtime.getRuntime().exec(command, None, File(working_dir))
+            else:
+                process = Runtime.getRuntime().exec(command)
+        
+        # Rest of the function stays the same...
+        stdout_reader = StreamReader(process.getInputStream(), "STDOUT:")
+        stderr_reader = StreamReader(process.getErrorStream(), "STDERR:")
+        
+        stdout_thread = Thread(stdout_reader)
+        stderr_thread = Thread(stderr_reader)
+        
+        stdout_thread.start()
+        stderr_thread.start()
+        
+        exit_code = process.waitFor()
+        stdout_thread.join()
+        stderr_thread.join()
+        
+        print("Exit code:", exit_code)
+        return exit_code == 0
     except Exception as e:
         print("Error running command:", e)
         return False
@@ -88,15 +147,13 @@ script_path = os.path.join(dynamoRioHome, "bin" + str(programSize), "drrun")
 
 if not os.path.exists(dynStruct_path):
     print("Building dynStruct module in DynamoRIO...")
-    env = os.environ.copy()
-    env['DYNAMORIO_HOME'] = dynamoRioHome
     build_file = os.path.join(absPath, "build.sh")
     try:
-        result = subprocess.call([build_file], env=env)
+        result = run_command([build_file], {"DYNAMORIO_HOME": dynamoRioHome}, absPath)
     except Exception as e:
         print("Error building dynStruct:", e)
 
-if not os.path.exists(dynStruct_path):
+if result == False or not os.path.exists(dynStruct_path):
     print("Build failed. Exiting.")
     exit()
     
