@@ -16,7 +16,7 @@ Download DynamoRIO and install in a known location.
 In Ghidra, import a binary you would like to analyze. Then open the script manager and add the directory for ghidraDynStruct.
 Refresh the scripts list, and `ghidraDynStruct.py` should appear. Simply press the play button to run the script. The script will first ask for the location of the DynamoRIO root directory, and will then run both stages.
 
-![Screenshot of script manager](scriptManager.png)
+![Screenshot of script manager](images/scriptManager.png)
 
 ## How it Works
 There are two stages to ghidraDynStruct - a dynamic stage and a static stage.
@@ -73,11 +73,11 @@ Here's a snippet of a JSON output, from the `queue` benchmark:
 ### Static Stage
 In the static stage, `ghidraDynStruct` parses this JSON output and makes queries against the Ghidra listing to infer the type of each accessed element within a structure (e.g. `func*`, `struct*`, `array`, `int`, `str`, etc.). It then adds these inferred structures to the Ghidra Data Type Manager under the `dynStructs.h` heading.
 
-![Struct Editor Screenshot](structEditor.png)
+![Struct Editor Screenshot](images/structEditor.png)
 
 Finally, the script edits the decompilation view directly to change the type of the result of each `malloc` call to the appropriate struct pointer. It also prints the address of each structure's allocation to the Ghidra console.
 
-![Decompilation Screenshot](decomp.png)
+![Decompilation Screenshot](images/decomp.png)
 
 ## Future Work
 The static stage currently works by first defining a C header and then parsing that header with Ghidra. But this is quite inefficient, especially given that we are inferring structs from Ghidra calls anyway. A better way to do it would be to define the structures as we go, rather then defining the header and parsing the header. I've done it this way for simplicity's sake, but simple is not always best.
