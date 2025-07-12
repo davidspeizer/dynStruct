@@ -3,6 +3,12 @@ from java.io import BufferedReader, InputStreamReader
 import json
 import os
 import _dynStruct
+from ghidra.app.util.cparser.C import CParserUtils
+from ghidra.app.decompiler import DecompInterface
+from ghidra.program.model.pcode import HighFunctionDBUtil
+from ghidra.program.model.data import PointerDataType
+from ghidra.program.model.pcode import PcodeOp
+from ghidra.program.model.symbol import SourceType
 
 def run_command(command):
     try:
@@ -53,6 +59,9 @@ def load_json(json_data, modules, l_block, l_access_w, l_access_r):
 # === Main Script ===
 
 currentBinary = currentProgram.getExecutablePath()
+dtm = currentProgram.getDataTypeManager()
+iface = DecompInterface()
+iface.openProgram(currentProgram)
 if currentBinary:
     absPath = os.path.dirname(str(getSourceFile().getAbsolutePath()))
 
@@ -60,6 +69,7 @@ if currentBinary:
     script_path = os.path.join(absPath, "DynamoRIO-Linux-11.90.20236/bin64/drrun")
     output_file = os.path.join(absPath, "dynStruct_out")
     module_file = os.path.join(absPath, "dynStruct_out_modules")
+    header_file = os.path.join(absPath, "structs.h")
     dynStruct_path = os.path.join(absPath, "dynStruct")
 
     if os.path.exists(output_file):
@@ -90,9 +100,75 @@ if currentBinary:
             print("Cleaning structures")
             # Clean up the structures, eliminating arrays from the list.
             _dynStruct.Struct.clean_all_struct(_dynStruct.l_struct)
-            print("Printing structures")
-            # Print the structures to the console.
-            # TODO: Change this to edit the Ghidra decomp.
-            _dynStruct.print_to_console(_dynStruct.l_struct)
+
+            # Import the structures into Ghidra.
+            # Right now we're creating the structures as a header file and then importing that header file.
+            # But it would be more efficient and probably more correct to do this directly with Ghidra instead.
+            # Add that to the wish-list.
+            print("Importing structures into Ghidra")
+            _dynStruct.print_to_file(header_file, _dynStruct.l_struct)
+            dataTypeManagers = state.getTool().getService(ghidra.app.services.DataTypeManagerService).getDataTypeManagers()
+            results = CParserUtils.parseHeaderFiles(dataTypeManagers, [header_file], [], dtm, monitor)
+            if results.successful() is False:
+                print("Failed to import structs into Ghidra")
+                exit()
+
+            for struct in _dynStruct.l_struct:
+                # First, get a list of all the allocations of the struct
+                allocs = []
+                for block in struct.blocks:
+                    offset = block.allocOffset + currentProgram.getMinAddress().getOffset()
+                    if offset not in allocs:
+                        allocs.append(offset)
+                        print(struct.name + ": " + hex(offset))
+                        
+                # Second, get a pointer to the struct
+                structType = dtm.getDataType(dtm.getName() + "/structs.h/" + struct.name)
+                if structType is None:
+                    print("Could not find struct type " + struct.name)
+                    exit()
+                structPtr = PointerDataType(structType)
+
+                # Third, find every place the struct is allocated and edit the decompilation there.
+                for alloc in allocs:
+                    addr = toAddr(alloc)
+                    func = getFunctionContaining(addr)
+                    # Load the decomp of the alloc-ing function
+                    res = iface.decompileFunction(func, 60, monitor)
+                    if res.decompileCompleted() == False:
+                        print("Failed to decompile alloc-ing function at " + addr.toString())
+                        exit()
+
+                    highFunc = res.getHighFunction()
+                    if highFunc is None:
+                        print("Decompilation did not produce a HighFunction at " + addr.toString())
+                        exit()
+
+                    pcodeOps = highFunc.getPcodeOps()
+                    varnode = None
+                    while pcodeOps.hasNext():
+                        op = pcodeOps.next()
+                        if op.getOpcode() == PcodeOp.CALL and op.getSeqnum().getTarget() == addr:
+                            varnode = op.getOutput()
+                            break
+                    if varnode is None:
+                        print("Could not get varnode for alloc at " + addr.toString())
+                        exit()
+
+                    highVar = varnode.getHigh()
+                    if highVar is None:
+                        print("Could not get HighVariable for alloc at " + addr.toString())
+                        exit()
+
+                    highSym = highVar.getSymbol()
+                    if highSym is None:
+                        print("Could not get HighSymbol for alloc at " + addr.toString())
+                        continue
+
+                    # Edit the decompilation to change the variable
+                    HighFunctionDBUtil.updateDBVariable(highSym, highVar.getName(), structPtr, SourceType.USER_DEFINED)
+                    print("Changed data type at " + addr.toString())
+            
+            os.remove(header_file)
     else:
         print("Failed to run external script or output file not found.")
