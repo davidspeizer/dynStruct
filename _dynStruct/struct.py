@@ -19,7 +19,7 @@ class Struct:
         self.name = ""
         self.id = 0
         self.blocks = []
-        self.looks_array = False;
+        self.looks_array = False
         self.size_array_unit = 0
         self.members = []
         self.is_sub_struct = is_sub
@@ -559,8 +559,6 @@ class Struct:
             if block.struct == tmp_struct:
                 structs.append(tmp_struct)
 
-            print("Found struct. Current number of structs is", len(structs))
-            print("Struct has", len(structs[-1].members), "members")
             if len(structs) == 0:
                 continue
 
@@ -575,7 +573,6 @@ class Struct:
 
     @staticmethod
     def clean_all_struct(structs):
-        print("Cleaning structs. Currently have", len(structs), "structs")
         list_structs = list(structs)
         for struct in list_structs:
             if struct.not_a_struct():

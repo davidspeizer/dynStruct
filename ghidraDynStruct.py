@@ -71,10 +71,9 @@ if currentBinary is None:
 absPath = os.path.dirname(str(getSourceFile().getAbsolutePath()))
 
 # Prepare the output files for our DynamoRIO run.
-#script_path = os.path.join(absPath, "DynamoRIO-Linux-11.90.20236/bin64/drrun")
 output_file = os.path.join(absPath, "dynStruct_out")
 module_file = os.path.join(absPath, "dynStruct_out_modules")
-header_file = os.path.join(absPath, "structs.h")
+header_file = os.path.join(absPath, "dynStructs.h")
 dynStruct_path = os.path.join(absPath, "dynStruct")
 
 fileChooser = GhidraFileChooser(None)
@@ -106,8 +105,10 @@ if success and os.path.exists(output_file):
         load_json(json_data, modules, _dynStruct.l_block, _dynStruct.l_access_w, _dynStruct.l_access_r)
         print(len(_dynStruct.l_block))
         print("Recovering structures")
+
         # Generate structures from the blocks
         _dynStruct.Struct.recover_all_struct(_dynStruct.l_block, _dynStruct.l_struct, monitor)
+
         print("Cleaning structures")
         # Clean up the structures, eliminating arrays from the list.
         _dynStruct.Struct.clean_all_struct(_dynStruct.l_struct)
@@ -134,7 +135,7 @@ if success and os.path.exists(output_file):
                     print(struct.name + ": " + hex(offset))
                     
             # Second, get a pointer to the struct
-            structType = dtm.getDataType(dtm.getName() + "/structs.h/" + struct.name)
+            structType = dtm.getDataType(dtm.getName() + "/dynStructs.h/" + struct.name)
             if structType is None:
                 print("Could not find struct type " + struct.name)
                 exit()

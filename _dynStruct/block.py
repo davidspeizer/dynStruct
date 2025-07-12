@@ -49,8 +49,6 @@ class Block:
 
     def get_access_by_offset(self, offset):
         ret = []
-        print(str(len(self.r_access)) + " read accesses and " + str(len(self.w_access)) + " write acceses.")
- #       print(self.w_access[0].instr.toString())
         for access in self.r_access + self.w_access:
             if access.is_offset(offset):
                 ret.append(access)

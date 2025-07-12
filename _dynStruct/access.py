@@ -77,17 +77,13 @@ class Access:
         return False
 
     def disass(self):
-        print("Calling disass with pc=0x{:x}, ctx_addr=0x{:x}".format(self.pc, self.ctx_addr))
-
         pc_addr = self.block.program.getAddressFactory().getDefaultAddressSpace().getAddress(self.pc)
         ctx_addr = self.block.program.getAddressFactory().getDefaultAddressSpace().getAddress(self.ctx_addr)
 
         if not hasattr(self, 'instr'):
             self.instr = self.listing.getInstructionAt(pc_addr)
-            print("Instruction: " + self.instr.toString())
             if self.ctx_opcode:
                 self.ctx_instr = self.listing.getInstructionAt(ctx_addr)
-                print("Context instruction: " + self.ctx_instr.toString())
 
     def analyse_ctx(self, size):
         if not hasattr(self, 'instr'):
