@@ -1,3 +1,6 @@
+# Run the program under DynamoRIO instrumentation to automatically infer structures
+# @category Analysis
+
 from java.lang import Runtime, String, System, Runnable
 from java.io import BufferedReader, InputStreamReader, File
 import jarray
@@ -138,6 +141,7 @@ module_file = os.path.join(absPath, "dynStruct_out_modules")
 header_file = os.path.join(absPath, "dynStructs.h")
 dynStruct_path = os.path.join(absPath, "dynStruct")
 
+# Get the DynamoRIO directory from the user
 fileChooser = GhidraFileChooser(None)
 fileChooser.setTitle("Select the DynamoRIO home folder")
 fileChooser.setApproveButtonText("Select")
@@ -145,18 +149,21 @@ fileChooser.setFileSelectionMode(GhidraFileChooser.DIRECTORIES_ONLY)
 dynamoRioHome = fileChooser.getSelectedFile().getAbsolutePath()
 script_path = os.path.join(dynamoRioHome, "bin" + str(programSize), "drrun")
 
+# If dynStruct has not been built yet, do that.
 if not os.path.exists(dynStruct_path):
     print("Building dynStruct module in DynamoRIO...")
     build_file = os.path.join(absPath, "build.sh")
+    build_args = [build_file]
+    if programSize == 32:
+        build_args.append("32")
     try:
-        result = run_command([build_file], {"DYNAMORIO_HOME": dynamoRioHome}, absPath)
+        result = run_command(build_args, {"DYNAMORIO_HOME": dynamoRioHome}, absPath)
     except Exception as e:
         print("Error building dynStruct:", e)
+    if result == False or not os.path.exists(dynStruct_path):
+        print("Build failed. Exiting.")
+        exit()
 
-if result == False or not os.path.exists(dynStruct_path):
-    print("Build failed. Exiting.")
-    exit()
-    
 if os.path.exists(output_file):
     os.remove(output_file)
 
@@ -259,6 +266,9 @@ if success and os.path.exists(output_file):
                 HighFunctionDBUtil.updateDBVariable(highSym, highVar.getName(), structPtr, SourceType.USER_DEFINED)
                 print("Changed data type at " + addr.toString())
         
+        # Cleanup
         os.remove(header_file)
+        os.remove(output_file)
+        os.remove(module_file)
 else:
     print("Failed to run external script or output file not found.")
