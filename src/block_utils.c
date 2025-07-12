@@ -24,7 +24,6 @@ malloc_t *add_block(size_t size, void *pc, void *drcontext)
     get_caller_data(&(new->alloc_func_pc),
                     &(new->alloc_func_sym),
                     &(new->alloc_module_name), drcontext, 1);
-    printf("Got caller data. address=%p, symbol=%s, func=%s\n", new->alloc_func_pc, new->alloc_func_sym, new->alloc_module_name);
   }
 
   return new;
