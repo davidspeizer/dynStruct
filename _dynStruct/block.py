@@ -29,6 +29,7 @@ class Block:
         print("allocation is at " + hex(self.alloc_pc) + ". This is in module " + result[0] + " which starts at " + hex(result[1]))
         print("Offset is therefore " + hex(self.alloc_pc - result[1]))
             
+        self.allocOffset = self.alloc_pc - result[1]
         self.r_access = []
         self.w_access = []
 
