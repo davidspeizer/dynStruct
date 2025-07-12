@@ -2,6 +2,7 @@ from java.lang import Runtime
 from java.io import BufferedReader, InputStreamReader
 import json
 import os
+import subprocess
 import _dynStruct
 from ghidra.app.util.cparser.C import CParserUtils
 from ghidra.app.decompiler import DecompInterface
@@ -68,6 +69,8 @@ if currentBinary is None:
     print("Could not find executable for program under test")
     exit()
 
+programSize = currentProgram.getAddressFactory().getDefaultAddressSpace().getSize()
+
 absPath = os.path.dirname(str(getSourceFile().getAbsolutePath()))
 
 # Prepare the output files for our DynamoRIO run.
@@ -77,11 +80,26 @@ header_file = os.path.join(absPath, "dynStructs.h")
 dynStruct_path = os.path.join(absPath, "dynStruct")
 
 fileChooser = GhidraFileChooser(None)
-fileChooser.setTitle("Select the drrun executable in your DynamoRIO instance")
+fileChooser.setTitle("Select the DynamoRIO home folder")
 fileChooser.setApproveButtonText("Select")
 fileChooser.setFileSelectionMode(GhidraFileChooser.FILES_ONLY)
-script_path = fileChooser.getSelectedFile().getAbsolutePath()
+dynamoRioHome = fileChooser.getSelectedFile().getAbsolutePath()
+script_path = os.path.join(dynamoRioHome, "bin" + str(programSize), "drrun")
 
+if not os.path.exists(dynStruct_path):
+    print("Building dynStruct module in DynamoRIO...")
+    env = os.environ.copy()
+    env['DYNAMORIO_HOME'] = dynamoRioHome
+    build_file = os.path.join(absPath, "build.sh")
+    try:
+        result = subprocess.call([build_file], env=env)
+    except Exception as e:
+        print("Error building dynStruct:", e)
+
+if not os.path.exists(dynStruct_path):
+    print("Build failed. Exiting.")
+    exit()
+    
 if os.path.exists(output_file):
     os.remove(output_file)
 
