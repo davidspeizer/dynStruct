@@ -9,9 +9,8 @@ import os
 import _dynStruct
 from ghidra.app.util.cparser.C import CParserUtils
 from ghidra.app.decompiler import DecompInterface
-from ghidra.program.model.pcode import HighFunctionDBUtil
+from ghidra.program.model.pcode import HighFunctionDBUtil, PcodeOp
 from ghidra.program.model.data import PointerDataType
-from ghidra.program.model.pcode import PcodeOp
 from ghidra.program.model.symbol import SourceType
 from docking.widgets.filechooser import GhidraFileChooser
 
@@ -196,7 +195,12 @@ if success and os.path.exists(output_file):
         # Generate structures from the blocks
         _dynStruct.Struct.recover_all_struct(_dynStruct.l_block, _dynStruct.l_struct, monitor)
 
-        print("Cleaning structures...")
+        ### Uncomment for debugging purposes
+        # for s in _dynStruct.l_struct:
+        #    print(str(s))
+        ##
+
+        print("Found " + str(len(_dynStruct.l_struct)) + " structures. Cleaning structures...")
         # Clean up the structures, eliminating arrays from the list.
         _dynStruct.Struct.clean_all_struct(_dynStruct.l_struct)
 
@@ -248,12 +252,22 @@ if success and os.path.exists(output_file):
                     exit()
 
                 pcodeOps = highFunc.getPcodeOps()
+                callOutput = None
                 varnode = None
                 while pcodeOps.hasNext():
                     op = pcodeOps.next()
                     if op.getOpcode() == PcodeOp.CALL and op.getSeqnum().getTarget() == addr:
-                        varnode = op.getOutput()
+                        callOutput = op.getOutput()
                         break
+                if callOutput is None:
+                    print("Could not get callOutput for alloc at " + addr.toString())
+                    exit()
+
+                while pcodeOps.hasNext():
+                    op = pcodeOps.next()
+                    if op.getOpcode() == PcodeOp.COPY or op.getOpcode() == PcodeOp.CAST:
+                        if op.getInput(0).equals(callOutput):
+                            varnode = op.getOutput()
                 if varnode is None:
                     print("Could not get varnode for alloc at " + addr.toString())
                     exit()
@@ -279,10 +293,12 @@ if success and os.path.exists(output_file):
                 # Edit the decompilation to change the variable
                 HighFunctionDBUtil.updateDBVariable(highSym, highSym.getName(), structPtr, SourceType.USER_DEFINED)
                 print("Changed data type at " + addr.toString())
-        
-        # Cleanup
-        os.remove(header_file)
-        os.remove(output_file)
-        os.remove(module_file)
+
+    os.remove(output_file)
 else:
     print("Failed to run external script or output file not found.")
+
+
+# Cleanup
+os.remove(header_file)
+os.remove(module_file)
