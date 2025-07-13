@@ -382,10 +382,13 @@ class Struct:
         return min([sz for sz in sizes if sizes[sz] == max_hit])
 
     def get_type(self, accesses, size):
+       # print("Called get_type with " + str(len(accesses)) + " accesses.")
+        #dbg = len(accesses) == 2
+        dbg = False
 
         types = {}
         for access in accesses:
-            t = access.analyse_ctx(size)
+            t = access.analyse_ctx(size, dbg)
             if t and t in types.keys():
                 types[t] += access.nb_access
             elif t:
@@ -394,7 +397,7 @@ class Struct:
         _dynStruct.Access.remove_instrs(accesses)
         # ptr_struct_str and ptr_array_str are ptr_str with a comment
         # they provide more information but are the same C type than ptr_str
-        # So they have to be prioritary on ptr_str
+        # So they have to be priority on ptr_str
         if _dynStruct.ptr_str in types and\
            (_dynStruct.ptr_array_str or _dynStruct.ptr_struct_str):
             types[_dynStruct.ptr_str] = 0

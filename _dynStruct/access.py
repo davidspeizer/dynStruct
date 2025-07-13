@@ -72,11 +72,20 @@ class Access:
             if self.ctx_opcode:
                 self.ctx_instr = self.listing.getInstructionAt(ctx_addr)
 
-    def analyse_ctx(self, size):
+    def analyse_ctx(self, size, debug = False):
         if not hasattr(self, 'instr'):
             self.disass()
+
+        printDbg = debug
+
+       # if self.instr.getAddress().getOffset() == 0x10125e or self.instr.getAddress().getOffset() == 0x10158f:
+        if printDbg:
+            print("Analyzing instruction with size=" + str(size))
             
         if self.t == 'write':
+            if printDbg:
+                print("Instruction: " + self.instr.toString())
+                print("Context: " + self.ctx_instr.toString())
             # Detect if the written val is the result from a floating point register
             if self.instr.getMnemonicString().startswith("MOV"):
                 src_op = self.instr.getRegister(1)
@@ -124,6 +133,8 @@ class Access:
                         if self.instr.getAddress() + offset / 4096 == self.instr.getAddress() / 4096:
                             return _dynStruct.ptr_func_struct
                     # If not, it's just a pointer because we can't have more information.
+                    if printDbg:
+                        print("Found void ptr")
                     return _dynStruct.ptr_str
 
             # If the move is an immediate value on the same page as RIP, then it's a function pointer.
@@ -138,6 +149,8 @@ class Access:
                 if imm is None:
                     return                
                 if int(self.instr.getAddress() / 4096) == int(imm / 4096):
+                    if printDbg:
+                        print("Found func ptr")
                     return _dynStruct.ptr_func_str
 
             # Detect if signed or unsigned
@@ -147,6 +160,8 @@ class Access:
                 srcReg = self.instr.getRegister(1)
                 if destReg is not None and srcReg is not None and destReg == srcReg:
                     if self.instr.getMnemonicString() in unsigned_int_mnemonics:
+                        if printDbg:
+                            print("Found unsigned")
                         return _dynStruct.unsigned_str % (size)
 
         # For read access we can only detect ptr because a use of the value read
@@ -177,30 +192,32 @@ class Access:
 
                 # If the context instruction is a mov with base+disp and base is the written register,
                 # then it's likely a struct pointer or an array.
-                for i in range(self.ctx_instr.getNumOperands()):
-                    op_objs = self.ctx_instr.getOpObjects(i)
-                    memBase = None
-                    hasIndexReg = False
-                    hasSegmentReg = False
-                    memDisp = None
-                    for obj in op_objs:
-                        # If we have 
-                        if isinstance(obj, Register):
-                            if len(obj.getName()) == 2 and obj.getName()[1] == 'S':
-                                hasSegmentReg = True
-                            if memBase is None:
-                                memBase = obj
-                            else:
-                                hasIndexReg = True
-                        elif isinstance(obj, Scalar):
-                            memDisp = obj
-                    if memBase == dest_reg:
-                        if not hasSegmentReg and memDisp != 0:
-                            return _dynStruct.ptr_struct_str
-                        if not hasSegmentReg and hasIndexReg:
-                            return _dynStruct.ptr_array_str
-                        # Otherwise it's a pointer with no more information
-                        return _dynStruct.ptr_str
+                if size == _dynStruct.bits / 8: # Sanity check here to make sure we don't call 32-bit ints pointers.
+                    for i in range(self.ctx_instr.getNumOperands()):
+                        op_objs = self.ctx_instr.getOpObjects(i)
+                        memBase = None
+                        hasIndexReg = False
+                        hasSegmentReg = False
+                        memDisp = None
+                        for obj in op_objs:
+                            if isinstance(obj, Register):
+                                if len(obj.getName()) == 2 and obj.getName()[1] == 'S':
+                                    hasSegmentReg = True
+                                if memBase is None:
+                                    memBase = obj
+                                else:
+                                    hasIndexReg = True
+                            elif isinstance(obj, Scalar):
+                                memDisp = obj
+                        if memBase == dest_reg:
+                            if not hasSegmentReg and memDisp != 0:
+                                if printDbg:
+                                    print("Found pointer to structure at " + hex(self.pc))
+                                return _dynStruct.ptr_struct_str
+                            if not hasSegmentReg and hasIndexReg:
+                                return _dynStruct.ptr_array_str
+                            # Otherwise it's a pointer with no more information
+                            return _dynStruct.ptr_str
                 
                 # if the context instr have 2 operand and the second one use
                 # the written ptr as base, it's ptr
@@ -210,6 +227,8 @@ class Access:
                #    self.ctx_instr.operands[1].reg == ctx_src_op:
                #     return _dynStruct.ptr_str
 
+        if printDbg:
+            print("Did not find type. Returning NoneType.")
         return None
 
     @staticmethod
