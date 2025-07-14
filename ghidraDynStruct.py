@@ -119,6 +119,72 @@ def load_json(json_data, modules, l_block, l_access_w, l_access_r):
         return False
     return True
 
+def update_ghidra_decomp(addr, structPtrType):
+    func = getFunctionContaining(addr)
+    # Load the decomp of the alloc-ing function
+    res = iface.decompileFunction(func, 60, monitor)
+    if res.decompileCompleted() == False:
+        print("Failed to decompile alloc-ing function at " + addr.toString())
+        return False
+
+    # Get Ghidra's version of the function.
+    highFunc = res.getHighFunction()
+    if highFunc is None:
+        print("Decompilation did not produce a HighFunction at " + addr.toString())
+        return False
+
+    # Get the list of pcode ops that Ghidra has for this function.
+    # We step through the ops until we see the CALL that sets our variable.
+    # We then keep stepping until we see the COPY or CAST that moves the result into a destination register.
+    # It is this destination register that we want to change.
+    pcodeOps = highFunc.getPcodeOps()
+    callOutput = None
+    varnode = None
+    while pcodeOps.hasNext():
+        op = pcodeOps.next()
+        if op.getOpcode() == PcodeOp.CALL and op.getSeqnum().getTarget() == addr:
+            callOutput = op.getOutput()
+            break
+    if callOutput is None:
+        print("Could not get callOutput for alloc at " + addr.toString())
+        return False
+
+    while pcodeOps.hasNext():
+        op = pcodeOps.next()
+        if op.getOpcode() == PcodeOp.COPY or op.getOpcode() == PcodeOp.CAST:
+            if op.getInput(0).equals(callOutput):
+                varnode = op.getOutput()
+    if varnode is None:
+        print("Could not get varnode for alloc at " + addr.toString())
+        return False
+
+    # Now that we have the destination register, we get the HighSymbol for that register.
+    # This is Ghidra's internal representation of the register, and this is what we want to change to our struct*.
+    highVar = varnode.getHigh()
+    highSym = None
+    if highVar is not None:
+        highSym = highVar.getSymbol()
+
+    # The decompilation might be such that the symbol can't be found from the pcode ops.
+    # If that's the case, then check the existing symbol table for the proper address.
+    if highSym is None:
+        syms = highFunc.getLocalSymbolMap().getSymbols()
+        while syms.hasNext():
+            sym = syms.next()
+            if sym.getPCAddress() == addr:
+                highSym = sym
+                break
+
+    # We shouldn't ever get here, but sometimes things go wrong.
+    if highSym is None:
+        print("Could not find HighSymbol for alloc at " + addr.toString())
+        return False
+
+    # Edit the decompilation to change the variable
+    HighFunctionDBUtil.updateDBVariable(highSym, highSym.getName(), structPtrType, SourceType.USER_DEFINED)
+    print("Changed data type at " + addr.toString())
+    return True
+
 # === Main Script ===
 
 currentBinary = currentProgram.getExecutablePath()
@@ -198,7 +264,7 @@ if success and os.path.exists(output_file):
         ### Uncomment for debugging purposes
         # for s in _dynStruct.l_struct:
         #    print(str(s))
-        ##
+        ###
 
         print("Found " + str(len(_dynStruct.l_struct)) + " structures. Cleaning structures...")
         # Clean up the structures, eliminating arrays from the list.
@@ -239,65 +305,13 @@ if success and os.path.exists(output_file):
             # Third, find every place the struct is allocated and edit the decompilation there.
             for alloc in allocs:
                 addr = toAddr(alloc)
-                func = getFunctionContaining(addr)
-                # Load the decomp of the alloc-ing function
-                res = iface.decompileFunction(func, 60, monitor)
-                if res.decompileCompleted() == False:
-                    print("Failed to decompile alloc-ing function at " + addr.toString())
+                if update_ghidra_decomp(addr, structPtr) == False:
+                    # Stop execution if we encountered an error
                     exit()
-
-                highFunc = res.getHighFunction()
-                if highFunc is None:
-                    print("Decompilation did not produce a HighFunction at " + addr.toString())
-                    exit()
-
-                pcodeOps = highFunc.getPcodeOps()
-                callOutput = None
-                varnode = None
-                while pcodeOps.hasNext():
-                    op = pcodeOps.next()
-                    if op.getOpcode() == PcodeOp.CALL and op.getSeqnum().getTarget() == addr:
-                        callOutput = op.getOutput()
-                        break
-                if callOutput is None:
-                    print("Could not get callOutput for alloc at " + addr.toString())
-                    exit()
-
-                while pcodeOps.hasNext():
-                    op = pcodeOps.next()
-                    if op.getOpcode() == PcodeOp.COPY or op.getOpcode() == PcodeOp.CAST:
-                        if op.getInput(0).equals(callOutput):
-                            varnode = op.getOutput()
-                if varnode is None:
-                    print("Could not get varnode for alloc at " + addr.toString())
-                    exit()
-
-                highVar = varnode.getHigh()
-                highSym = None
-                if highVar is not None:
-                    highSym = highVar.getSymbol()
-
-                # The decompilation might be such that the symbol can't be found from the pcode ops.
-                # If that's the case, then check the existing symbol table for the proper address.
-                if highSym is None:
-                    syms = highFunc.getLocalSymbolMap().getSymbols()
-                    while syms.hasNext():
-                        sym = syms.next()
-                        if sym.getPCAddress() == addr:
-                            highSym = sym
-                            break
-
-                if highSym is None:
-                    print("Could not find HighSymbol for alloc at " + addr.toString())
-
-                # Edit the decompilation to change the variable
-                HighFunctionDBUtil.updateDBVariable(highSym, highSym.getName(), structPtr, SourceType.USER_DEFINED)
-                print("Changed data type at " + addr.toString())
-
+                
     os.remove(output_file)
 else:
     print("Failed to run external script or output file not found.")
-
 
 # Cleanup
 os.remove(header_file)
