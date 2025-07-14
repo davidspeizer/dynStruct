@@ -17,6 +17,11 @@ from docking.widgets.filechooser import GhidraFileChooser
 from java.lang import Thread
 from java.io import BufferedReader, InputStreamReader
 
+currentBinary = currentProgram.getExecutablePath()
+dtm = currentProgram.getDataTypeManager()
+iface = DecompInterface()
+iface.openProgram(currentProgram)
+
 # Define a class here to help run external programs and manage stdout/stderr prints.
 # Doing this mostly with Java syntax rather than python because that seems to work better.
 class StreamReader(Runnable):
@@ -135,8 +140,6 @@ def update_ghidra_decomp(addr, structPtrType):
 
     # Get the list of pcode ops that Ghidra has for this function.
     # We step through the ops until we see the CALL that sets our variable.
-    # We then keep stepping until we see the COPY or CAST that moves the result into a destination register.
-    # It is this destination register that we want to change.
     pcodeOps = highFunc.getPcodeOps()
     callOutput = None
     varnode = None
@@ -148,15 +151,22 @@ def update_ghidra_decomp(addr, structPtrType):
     if callOutput is None:
         print("Could not get callOutput for alloc at " + addr.toString())
         return False
-
-    while pcodeOps.hasNext():
-        op = pcodeOps.next()
-        if op.getOpcode() == PcodeOp.COPY or op.getOpcode() == PcodeOp.CAST:
-            if op.getInput(0).equals(callOutput):
-                varnode = op.getOutput()
-    if varnode is None:
-        print("Could not get varnode for alloc at " + addr.toString())
-        return False
+    
+    # It is possible that Ghidra defines the output of this call as our variable.
+    # If so, then there will be a HighSymbol associated with.
+    # If not, then we then keep stepping until we see the COPY or CAST that moves the result into a destination register.
+    # It is this destination register that we want to change.
+    if callOutput.getHigh() is not None and callOutput.getHigh().getSymbol() is not None:
+        varnode = callOutput
+    else:
+        while pcodeOps.hasNext():
+            op = pcodeOps.next()
+            if op.getOpcode() == PcodeOp.COPY or op.getOpcode() == PcodeOp.CAST:
+                if op.getInput(0).equals(callOutput):
+                    varnode = op.getOutput()
+        if varnode is None:
+            print("Could not get varnode for alloc at " + addr.toString())
+            return False
 
     # Now that we have the destination register, we get the HighSymbol for that register.
     # This is Ghidra's internal representation of the register, and this is what we want to change to our struct*.
@@ -186,13 +196,7 @@ def update_ghidra_decomp(addr, structPtrType):
     return True
 
 # === Main Script ===
-
-currentBinary = currentProgram.getExecutablePath()
-dtm = currentProgram.getDataTypeManager()
-iface = DecompInterface()
-iface.openProgram(currentProgram)
-
-if currentBinary is None:
+if currentBinary is None:# 
     print("Could not find executable for program under test")
     exit()
 
